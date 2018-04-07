@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Webview</title>
+</head>
+<style>
+	html, body {
+		height: 100%;
+		width: 100%;
+		overflow: hidden;
+	}
+
+	webview {
+		position: absolute;
+		width: 99%;
+		left: 0;
+		right: 0;
+		margin: 0 auto;
+		height: 100%;
+	}
+</style>
+<body>
+	<webview src="https://shaka-player-demo.appspot.com" style="width:100%; height:100%"></webview>
+	<script>
+		if (typeof module === 'object') {window.module = module; module = undefined;}
+		window.$ = window.jQuery = require('jquery');
+	</script>
+	<script>
+		/*$(window).on("load", function() {
+			webview = document.querySelector('webview');
+			webview.addEventListener('dom-ready', () => {
+				webview.executeJavaScript("document.getElementsByName('email')[0].focus();"); 
+				webview.insertText("gittebel@yahoo.com"); 
+
+				webview.executeJavaScript("document.getElementsByName('password')[0].focus();"); 
+				webview.insertText("hjemmebiografen");
+
+				webview.executeJavaScript("document.getElementsByClassName('login-button')[0].click();");
+			});
+		}); */
+	</script>
+</body>
+</html>
