@@ -18,9 +18,43 @@
 			overflow: hidden;
 		}
 
+		.hidden {
+			display: none;
+		}
+
 		.background-image {
 			height: 100%;
 			width: 100%;
+		}
+
+		.logo {
+			position: absolute;
+			left: 0;
+			right: 0;
+			width: 30%;
+			margin: 0 auto;
+			top: 39%;
+
+		}
+
+		.load-gif {
+			position: absolute;
+			left: 0;
+			right: 0;
+			margin: 0 auto;
+			width: 60px;
+			height: 60px;
+			top: 52%;
+		}
+
+		.overlay {
+			position: absolute;
+			top: 0;
+			left: 0;
+			height: 100%;
+			width: 100%;
+			background-color: #1f1a50;
+			opacity: 0.1;
 		}
 
 		.label-container {
@@ -123,29 +157,35 @@
 	</style>
 </head>
 <body>
-	<img src="background.png" class="background-image">
-	<div class="label-container">
-		<div class="label-icon">
-			<i class="fa fa-home"></i>
+	<img src="background.gif" class="background-image">
+	<div class="overlay"></div>
+	<img src="logo.png" class="logo">
+	<img src="loading.gif" class="load-gif">
+	<div class="hidden">
+		<div class="label-container">
+			<div class="label-icon">
+				<i class="fa fa-home"></i>
+			</div>
+			<div class="label-text">home</div>
 		</div>
-		<div class="label-text">home</div>
+		<div class="wave-container">
+			<div class="wave-button wave-button-1">
+				<img class="wave-button-image" src="app-1.png">
+			</div>
+			<div class="wave-button wave-button-2 select-button">
+				<img class="wave-button-image" src="app-2.png">
+			</div>
+			<div class="wave-button wave-button-3">
+				<img class="wave-button-image" src="app-3.png">
+			</div>
+			<div class="wave-button wave-button-4">
+				<img class="wave-button-image" src="app-4.png">
+			</div>
+		</div>
+		<div class="time-container"></div>
+		<div class="volume-controller"></div>
 	</div>
-	<div class="wave-container">
-		<div class="wave-button wave-button-1">
-			<img class="wave-button-image" src="app-1.png">
-		</div>
-		<div class="wave-button wave-button-2 select-button">
-			<img class="wave-button-image" src="app-2.png">
-		</div>
-		<div class="wave-button wave-button-3">
-			<img class="wave-button-image" src="app-3.png">
-		</div>
-		<div class="wave-button wave-button-4">
-			<img class="wave-button-image" src="app-4.png">
-		</div>
-	</div>
-	<div class="time-container">1:18<sup class="midday">&nbsp;pm</sup>
-	</div>
+	<script src="../node_modules/socket.io-client/dist/socket.io.js"></script>
 	<script>
 		if (typeof module === 'object') {window.module = module; module = undefined;}
 		window.$ = window.jQuery = require('jquery');
@@ -156,30 +196,81 @@
 		var start_pos_top = new Array(5);
 		var start_pos_left = new Array(5); 
 		var start_radius = new Array(5); 
-		var offset = 0; 
+		var offset = 0;
+		var is_active = false; 
+		var load;  
 
-		$(document).ready(function() {
-			for (var i = 1; i < 5; i++) {
-				start_pos_top[i] = $(".wave-button-" + i).position().top; 
-				start_pos_left[i] = $(".wave-button-" + i).position().left; 
-				start_radius[i] = $(".wave-button-" + i).width(); 
-			} 
+		$("body").on("keyup", function(e) {
+			if (e.keyCode == 27) {
+				ipc.send("close", {}); 
+			}	
+		});
 
+		$(window).on("load", function() {
+			//var socket = io.connect("http://localhost:3000");
+			updateClock(); 
+			setInterval(function() {
+				updateClock(); 
+			}, 1000); 
+			load = window.location.search.split('=')[1]; 
+			if (load == '1') {
+				$('.overlay').animate({opacity: 0.7}, 5000);
+				$('.logo').fadeOut(4500); 
+				$('.load-gif').fadeOut(4500); 
+				$('.hidden').delay(4000).fadeIn(1000, function() {
+					for (var i = 1; i < 5; i++) {
+						start_pos_top[i] = $(".wave-button-" + i).position().top; 
+						start_pos_left[i] = $(".wave-button-" + i).position().left; 
+						start_radius[i] = $(".wave-button-" + i).width(); 
+					} 
+				});
+			} else {
+				$('.overlay').animate({opacity: 0.7}, 50);
+				$('.logo').fadeOut(1000); 
+				$('.load-gif').fadeOut(1000); 
+				$('.hidden').delay(1000).fadeIn(1000, function() {
+					for (var i = 1; i < 5; i++) {
+						start_pos_top[i] = $(".wave-button-" + i).position().top; 
+						start_pos_left[i] = $(".wave-button-" + i).position().left; 
+						start_radius[i] = $(".wave-button-" + i).width(); 
+					} 
+				}); 
+			}
 
 			ipc.on("key-press", function(event, data) {
 				if (data.key == "left-arrow") {
-					 moveIconsRight();
+					moveIconsRight();
 				} else if (data.key == "right-arrow") {
 					moveIconsLeft();
 				}
 			}); 
 
-			$("body").keydown(function(e) {
-				if (e.keyCode == 37) {
-					moveIconsRight(); 
-				} else if (e.keyCode == 39) {
-					moveIconsLeft(); 
-				}
+			$("body").on("keyup", function(e) {
+				console.log("keyup detected: " + e.keyCode); 
+
+				if (!is_active) {
+					if (e.keyCode == 27) {
+						ipc.send("close", {}); 
+					} else if (e.keyCode == 37) {
+						moveIconsRight(); 
+						is_active = true;
+
+						setTimeout(function() {
+							is_active = false;
+						}, 500); 
+					} else if (e.keyCode == 39) {
+						moveIconsLeft(); 
+						is_active = true; 
+
+						setTimeout(function() {
+							is_active = false;
+						}, 500); 
+					} else if (e.keyCode == 13) {
+						console.log("pressed enter"); 
+						var num = $('.select-button').attr("class").split(" ")[1].split("-")[2]; 
+						ipc.send("start-app", {id: num}); 
+					}
+				}	
 			});
 		}); 
 
@@ -209,20 +300,20 @@
 					if (newIndex <= 0) {
 						newLeft = (parseFloat($(".wave-button-" + i).position().left) - 300) + "px";
 						$(".wave-button-" + i).animate({top: start_pos_top[1], left: newLeft, 
-							width: start_radius[1], height: start_radius[1], opacity: 0}, 750);
+							width: start_radius[1], height: start_radius[1], opacity: 0}, 500);
 					} else if (newIndex >= 5) {
 						newLeft = (parseFloat($(".wave-button-" + i).position().left) - 300) + "px";
 						$(".wave-button-" + i).animate({top: start_pos_top[4], left: newLeft, 
-							width: start_radius[4], height: start_radius[4], opacity: 0}, 750);
+							width: start_radius[4], height: start_radius[4], opacity: 0}, 500);
 					} else if ($(".wave-button-" + i).css("opacity") == 0) {
 						newLeft = (parseFloat($(".wave-button-" + i).position().left) - 300) + "px";
 						$(".wave-button-" + i).animate({top: start_pos_top[4], left: newLeft, 
-							width: start_radius[4], height: start_radius[4], opacity: 1}, 750);
+							width: start_radius[4], height: start_radius[4], opacity: 1}, 500);
 					} else {
 						newLeft = start_pos_left[newIndex]; 
 						newTop = start_pos_top[newIndex]; 
 						$(".wave-button-" + i).animate({top: newTop, left: newLeft, 
-							width: start_radius[newIndex], height: start_radius[newIndex], opacity: 1}, 750);
+							width: start_radius[newIndex], height: start_radius[newIndex], opacity: 1}, 500);
 					} 
 				}
 			}
@@ -251,23 +342,35 @@
 					if (newIndex <= 0) {
 						newLeft = (parseFloat($(".wave-button-" + i).position().left) + 300) + "px";
 						$(".wave-button-" + i).animate({top: start_pos_top[1], left: newLeft, 
-							width: start_radius[1], height: start_radius[1], opacity: 0}, 750);
+							width: start_radius[1], height: start_radius[1], opacity: 0}, 500);
 					} else if (newIndex >= 5) {
 						newLeft = (parseFloat($(".wave-button-" + i).position().left) + 300) + "px";
 						$(".wave-button-" + i).animate({top: start_pos_top[4], left: newLeft, 
-							width: start_radius[4], height: start_radius[4], opacity: 0}, 750);
+							width: start_radius[4], height: start_radius[4], opacity: 0}, 500);
 					} else if ($(".wave-button-" + i).css("opacity") == 0) {
 						newLeft = (parseFloat($(".wave-button-" + i).position().left) + 300) + "px";
 						$(".wave-button-" + i).animate({top: start_pos_top[1], left: newLeft, 
-							width: start_radius[1], height: start_radius[1], opacity: 1}, 750);
+							width: start_radius[1], height: start_radius[1], opacity: 1}, 500);
 					} else {
 						newLeft = start_pos_left[newIndex]; 
 						newTop = start_pos_top[newIndex]; 
 						$(".wave-button-" + i).animate({top: newTop, left: newLeft, 
-							width: start_radius[newIndex], height: start_radius[newIndex], opacity: 1}, 750);
+							width: start_radius[newIndex], height: start_radius[newIndex], opacity: 1}, 500);
 					} 
 				}
 			}
+		}
+
+		function updateClock () {
+			var date = new Date(); 
+			var hours = date.getHours();
+			var minutes = date.getMinutes();
+			var ampm = hours >= 12 ? 'pm' : 'am';
+			hours = hours % 12;
+			hours = hours ? hours : 12;
+			minutes = minutes < 10 ? '0'+minutes : minutes;
+			var strTime = hours + ':' + minutes + "<sup class='midday'>&nbsp;" + ampm;
+			$('.time-container').html(strTime);
 		}
 	</script>
 </body>
